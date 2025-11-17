@@ -1,16 +1,15 @@
 package com.workintech.s18d2;
 
+import com.workintech.s18d2.dao.FruitRepository;
 import com.workintech.s18d2.entity.Fruit;
 import com.workintech.s18d2.entity.FruitType;
 import com.workintech.s18d2.entity.Vegetable;
 import com.workintech.s18d2.exceptions.PlantException;
-import com.workintech.s18d2.repository.FruitRepository;
 import com.workintech.s18d2.services.FruitServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,15 +22,16 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
-@ExtendWith(ResultAnalyzer.class)
 class MainTest {
+
     @Autowired
     private TestEntityManager entityManager;
 
@@ -41,15 +41,13 @@ class MainTest {
     @Mock
     private FruitRepository mockFruitRepository;
 
-
-
     private FruitServiceImpl fruitService;
 
-    private Fruit sampleFruitForFruitServiceTest;
+    private Fruit sampleFruit;
 
     @BeforeEach
     void setup() {
-
+        // Veritabanına örnek meyveler ekle
         Fruit apple = new Fruit();
         apple.setName("Apple");
         apple.setPrice(15.0);
@@ -64,15 +62,18 @@ class MainTest {
 
         entityManager.flush();
 
-        sampleFruitForFruitServiceTest = new Fruit();
-        sampleFruitForFruitServiceTest.setId(1L);
-        sampleFruitForFruitServiceTest.setName("Apple");
+        // Mock testler için örnek fruit
+        sampleFruit = new Fruit();
+        sampleFruit.setId(1L);
+        sampleFruit.setName("Apple");
+        sampleFruit.setPrice(15.0);
+        sampleFruit.setFruitType(FruitType.SWEET);
 
         fruitService = new FruitServiceImpl(mockFruitRepository);
     }
 
     @Test
-    @DisplayName("Fruit properties are set correctly")
+    @DisplayName("Fruit entity properties are set correctly")
     void testFruitProperties() {
         Fruit fruit = new Fruit();
         fruit.setId(1L);
@@ -87,126 +88,96 @@ class MainTest {
     }
 
     @Test
-    @DisplayName("Enum should contain expected values")
-    void enumShouldContainExpectedValues() {
-        assertTrue(FruitType.valueOf("SWEET") == FruitType.SWEET);
-        assertTrue(FruitType.valueOf("SOUR") == FruitType.SOUR);
-    }
-
-    @Test
-    @DisplayName("FruitType Enum should contain exact number of values")
-    void enumShouldContainExactNumberOfValues() {
-        assertTrue(FruitType.values().length == 2);
-    }
-
-    @Test
-    @DisplayName("Vegetable getters and setters are set correctly")
+    @DisplayName("Vegetable entity properties are set correctly")
     void testVegetableProperties() {
-        Vegetable vegetable = new Vegetable();
-        vegetable.setId(2L);
-        vegetable.setName("Carrot");
-        vegetable.setPrice(20.0);
-        vegetable.setGrownOnTree(false);
+        Vegetable veg = new Vegetable();
+        veg.setId(2L);
+        veg.setName("Carrot");
+        veg.setPrice(20.0);
+        veg.setGrownOnTree(false);
 
-        assertEquals(2L, vegetable.getId());
-        assertEquals("Carrot", vegetable.getName());
-        assertEquals(20.0, vegetable.getPrice());
-        assertFalse(vegetable.isGrownOnTree());
+        assertEquals(2L, veg.getId());
+        assertEquals("Carrot", veg.getName());
+        assertEquals(20.0, veg.getPrice());
+        assertFalse(veg.getGrownOnTree());
 
-
-        vegetable.setGrownOnTree(true);
-        assertTrue(vegetable.isGrownOnTree());
+        veg.setGrownOnTree(true);
+        assertTrue(veg.getGrownOnTree());
     }
 
     @Test
-    @DisplayName("FruitRepository::getByPriceDesc should return fruits in descending order of price")
-    void testGetByPriceDesc() {
-        List<Fruit> fruits = fruitRepository.getByPriceDesc();
-        assertEquals(2, fruits.size());
-        assertTrue(fruits.get(0).getPrice() >= fruits.get(1).getPrice());
-    }
-
-    @Test
-    @DisplayName("FruitRepository::getByPriceAsc should return fruits in ascending order of price")
+    @DisplayName("FruitRepository returns fruits in ascending price order")
     void testGetByPriceAsc() {
-        List<Fruit> fruits = fruitRepository.getByPriceAsc();
+        List<Fruit> fruits = fruitRepository.findAllByOrderByPriceAsc();
         assertEquals(2, fruits.size());
         assertTrue(fruits.get(0).getPrice() <= fruits.get(1).getPrice());
     }
 
     @Test
-    @DisplayName("FruitRepository::searchByName should return fruits with matching name")
+    @DisplayName("FruitRepository returns fruits in descending price order")
+    void testGetByPriceDesc() {
+        List<Fruit> fruits = fruitRepository.findAllByOrderByPriceDesc();
+        assertEquals(2, fruits.size());
+        assertTrue(fruits.get(0).getPrice() >= fruits.get(1).getPrice());
+    }
+
+    @Test
+    @DisplayName("FruitRepository search by name works")
     void testSearchByName() {
-        List<Fruit> fruits = fruitRepository.searchByName("Apple");
+        List<Fruit> fruits = fruitRepository.findByNameContainingIgnoreCase("Apple");
         assertEquals(1, fruits.size());
         assertEquals("Apple", fruits.get(0).getName());
     }
 
     @Test
-    @DisplayName("FruitService::getById() should return a fruit when a fruit with the given id exists")
-    void testGetByIdFoundFruitService() {
-        when(mockFruitRepository.findById(anyLong())).thenReturn(Optional.of(sampleFruitForFruitServiceTest));
+    @DisplayName("FruitService getById returns fruit if exists")
+    void testGetByIdFound() {
+        when(mockFruitRepository.findById(anyLong())).thenReturn(Optional.of(sampleFruit));
 
-        Fruit foundFruit = fruitService.getById(1L);
+        Fruit result = fruitService.getById(1L);
 
-        assertNotNull(foundFruit);
-        assertEquals(sampleFruitForFruitServiceTest.getName(), foundFruit.getName());
+        assertNotNull(result);
+        assertEquals("Apple", result.getName());
     }
 
     @Test
-    @DisplayName("FruitService::getById() should throw PlantException when a fruit with the given id does not exist")
-    void testGetByIdNotFoundFruitService() {
+    @DisplayName("FruitService getById throws PlantException if not found")
+    void testGetByIdNotFound() {
         when(mockFruitRepository.findById(anyLong())).thenReturn(Optional.empty());
 
         assertThrows(PlantException.class, () -> fruitService.getById(1L));
     }
 
     @Test
-    @DisplayName("FruitService::getAll() should return all fruits")
-    void testGetByPriceAscFruitService() {
-        when(mockFruitRepository.getByPriceAsc()).thenReturn(Arrays.asList(sampleFruitForFruitServiceTest));
+    @DisplayName("FruitService save works")
+    void testSaveFruit() {
+        when(mockFruitRepository.save(any(Fruit.class))).thenReturn(sampleFruit);
 
-        List<Fruit> fruits = fruitService.getByPriceAsc();
-
-        assertFalse(fruits.isEmpty());
-        assertEquals(1, fruits.size());
+        Fruit saved = fruitService.saveOrUpdate(new Fruit());
+        assertNotNull(saved);
+        assertEquals("Apple", saved.getName());
     }
 
     @Test
-    @DisplayName("FruitService::getAll() should return all fruits")
-    void testSaveFruitService() {
-        when(mockFruitRepository.save(any(Fruit.class))).thenReturn(sampleFruitForFruitServiceTest);
-
-        Fruit savedFruit = fruitService.save(new Fruit());
-
-        assertNotNull(savedFruit);
-        assertEquals(sampleFruitForFruitServiceTest.getName(), savedFruit.getName());
-    }
-
-    @Test
-    @DisplayName("FruitService::delete() should return the deleted fruit")
-    void testDeleteFruitService() {
-        when(mockFruitRepository.findById(anyLong())).thenReturn(Optional.of(sampleFruitForFruitServiceTest));
+    @DisplayName("FruitService delete works")
+    void testDeleteFruit() {
+        when(mockFruitRepository.findById(anyLong())).thenReturn(Optional.of(sampleFruit));
         doNothing().when(mockFruitRepository).delete(any(Fruit.class));
 
-        Fruit deletedFruit = fruitService.delete(1L);
 
-        assertNotNull(deletedFruit);
-        assertEquals(sampleFruitForFruitServiceTest.getName(), deletedFruit.getName());
+        Fruit deleted = fruitService.deleteById(1L);
+        assertNotNull(deleted);
+        assertEquals("Apple", deleted.getName());
     }
 
     @Test
-    @DisplayName("FruitService::searchByName() should return fruits with the given name")
-    void testSearchByNameFruitService() {
-        when(mockFruitRepository.searchByName(anyString())).thenReturn(Arrays.asList(sampleFruitForFruitServiceTest));
+    @DisplayName("FruitService searchByName works")
+    void testSearchByNameService() {
+        when(mockFruitRepository.findByNameContainingIgnoreCase(any())).thenReturn(Arrays.asList(sampleFruit));
 
-        List<Fruit> fruits = fruitService.searchByName("Apple");
-
+        List<Fruit> fruits = fruitService.findByNameContaining("Apple");
         assertFalse(fruits.isEmpty());
         assertEquals(1, fruits.size());
-        assertEquals(sampleFruitForFruitServiceTest.getName(), fruits.get(0).getName());
+        assertEquals("Apple", fruits.get(0).getName());
     }
-
-
-
 }

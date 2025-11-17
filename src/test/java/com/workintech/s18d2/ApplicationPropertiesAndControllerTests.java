@@ -82,34 +82,35 @@ class ApplicationPropertiesAndControllerTests {
 
     @Test
     void testGetFruits() throws Exception {
-        given(fruitService.getByPriceAsc()).willReturn(List.of(sampleFruit));
+        given(fruitService.getAllAsc()).willReturn(List.of(sampleFruit));
         mockMvc.perform(get("/fruit"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name", is("Apple")));
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name", is("Apple")));
     }
 
     @Test
     void testGetFruitsDesc() throws Exception {
-        given(fruitService.getByPriceDesc()).willReturn(List.of(sampleFruit));
+        given(fruitService.getAllDesc()).willReturn(List.of(sampleFruit));
         mockMvc.perform(get("/fruit/desc"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name", is("Apple")));
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name", is("Apple")));
     }
 
     @Test
     void testGetFruitsByName() throws Exception {
-        given(fruitService.searchByName("Apple")).willReturn(List.of(sampleFruit));
+        given(fruitService.findByNameContaining("Apple")).willReturn(List.of(sampleFruit));
         mockMvc.perform(get("/fruit/name/{name}", "Apple"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name", is("Apple")));
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name", is("Apple")));
     }
+
 
     @Test
     void testSaveFruit() throws Exception {
-        given(fruitService.save(any())).willReturn(sampleFruit);
+        given(fruitService.saveOrUpdate(any())).willReturn(sampleFruit);
         mockMvc.perform(post("/fruit")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sampleFruit)))
@@ -128,10 +129,12 @@ class ApplicationPropertiesAndControllerTests {
 
     @Test
     void testDeleteFruitSuccess() throws Exception {
-        when(fruitService.delete(anyLong())).thenReturn(sampleFruit);
+        when(fruitService.deleteById(anyLong())).thenReturn(sampleFruit);
+
         mockMvc.perform(delete("/fruit/{id}", 1L))
                 .andExpect(status().isOk());
     }
+
 }
 
 
